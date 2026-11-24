@@ -4,6 +4,8 @@ A single-file HTML tool to **explore the measure dependencies of a Power BI / An
 
 No install, no server, no dependencies: open `index.html` in a browser and drop a model file onto it. Everything runs locally; your model never leaves your machine.
 
+**Live version: https://vincentgvr.github.io/dax-measure-graph/** (the file you load stays in your browser, nothing is uploaded).
+
 ![Dependency graph](docs/graph.png)
 
 ## Features
@@ -57,3 +59,7 @@ Outil HTML autonome pour **explorer les dépendances entre mesures d'un modèle 
 Ouvrez `index.html`, puis déposez un fichier `.bim` (ou un CSV de dépendances) : tout est calculé localement dans le navigateur. Le bouton **FR / EN** en haut à droite change la langue de l'interface ; le choix est mémorisé.
 
 Les vues sont celles décrites ci-dessus : graphe des dépendances, modèle complet, filtre par tables, curseur sur le nombre de liens, panneau de détails (expression DAX) et **Classement** par impact (colonnes Impact, Directs, Finales, Dépend de, Cumul, avec tri « Couverture optimale »). L'export CSV du classement utilise `;` et la virgule décimale en français, `,` et le point décimal en anglais.
+
+## License
+
+[MIT](LICENSE)
