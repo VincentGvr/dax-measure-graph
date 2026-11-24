@@ -1,0 +1,1334 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Graphe des mesures DAX</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg:#f5f6f8; --panel:#fff; --line:#d9dde3; --text:#1f2933; --muted:#6b7684; --accent:#2f6fed; --leaf:#16a34a; }
+  * { box-sizing:border-box; }
+  html, body { height:100%; margin:0; }
+  body { display:flex; flex-direction:column; font:13px "Segoe UI", system-ui, Arial, sans-serif; color:var(--text); background:var(--bg); }
+  header { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; padding:8px 12px; background:var(--panel); border-bottom:1px solid var(--line); }
+  header h1 { font-size:15px; margin:0 6px 0 0; font-weight:600; }
+  .btn, button, select, input[type=search] { font:inherit; color:inherit; border:1px solid var(--line); background:#fff; border-radius:6px; padding:5px 10px; }
+  button, .btn { cursor:pointer; }
+  button:hover, .btn:hover { border-color:var(--accent); color:var(--accent); }
+  button:disabled { opacity:.4; cursor:default; border-color:var(--line); color:inherit; }
+  select:disabled { opacity:.5; }
+  .btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .btn.primary:hover { color:#fff; filter:brightness(1.08); }
+  input[type=file] { display:none; }
+  #searchWrap { position:relative; }
+  #search { width:300px; }
+  #suggest { position:absolute; top:100%; left:0; right:0; z-index:20; margin:2px 0 0; padding:0; list-style:none; background:#fff; border:1px solid var(--line); border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,.12); max-height:320px; overflow:auto; display:none; }
+  #suggest li { padding:5px 10px; cursor:pointer; display:flex; justify-content:space-between; gap:10px; }
+  #suggest li small { color:var(--muted); white-space:nowrap; }
+  #suggest li.act, #suggest li:hover { background:#eef3ff; }
+  #tblWrap { position:relative; }
+  #tblPanel { position:absolute; top:100%; left:0; z-index:25; margin-top:2px; width:310px; background:#fff; border:1px solid var(--line); border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,.12); padding:6px 0; display:none; }
+  #tblPanel.open { display:block; }
+  #tblPanel .thead { display:flex; gap:12px; padding:2px 12px 6px; border-bottom:1px solid var(--line); }
+  #tblPanel a { color:var(--accent); cursor:pointer; text-decoration:none; font-size:12px; }
+  #tblPanel a:hover { text-decoration:underline; }
+  #tblPanel .trow { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:3px 12px; }
+  #tblPanel .trow:hover { background:#eef3ff; }
+  #tblPanel label { display:flex; align-items:center; gap:7px; cursor:pointer; flex:1; min-width:0; }
+  #tblPanel label span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #tblPanel label small { color:var(--muted); margin-left:auto; }
+  #tblPanel label i { width:10px; height:10px; border-radius:3px; flex:none; }
+  #tblPanel .note { margin-top:4px; padding:6px 12px 2px; border-top:1px solid var(--line); color:var(--muted); font-size:11.5px; line-height:1.45; }
+  #degWrap { display:flex; align-items:center; gap:6px; }
+  #degWrap select { padding:5px 6px; }
+  #degMin { width:150px; margin:0; padding:0; accent-color:var(--accent); cursor:pointer; }
+  #degMin:disabled { cursor:default; opacity:.4; }
+  #degVal { min-width:118px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .seg { display:inline-flex; }
+  .seg button { border-radius:0; margin-left:-1px; }
+  .seg button:first-child { border-radius:6px 0 0 6px; margin-left:0; }
+  .seg button:last-child { border-radius:0 6px 6px 0; }
+  .seg button.act { background:#eef3ff; color:var(--accent); border-color:var(--accent); font-weight:600; position:relative; z-index:1; }
+  body.rank #back, body.rank #searchWrap, body.rank #mode, body.rank #depth, body.rank #degWrap, body.rank #exportSvg { display:none; }
+  body.rank #stage { display:none; }
+  #rank { flex:1; min-width:0; display:none; flex-direction:column; background:var(--panel); }
+  body.rank #rank { display:flex; }
+  .rtool { display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; padding:8px 12px; border-bottom:1px solid var(--line); }
+  .rtool label { display:flex; align-items:center; gap:6px; color:var(--muted); }
+  #rkFilter { width:210px; }
+  #rkSum { margin-left:auto; color:var(--muted); text-align:right; }
+  .rnote { padding:6px 12px; background:#f8f9fb; border-bottom:1px solid var(--line); color:var(--muted); font-size:12px; line-height:1.5; }
+  .rnote b { color:var(--text); font-weight:600; }
+  .rwrap { flex:1; min-height:0; overflow:auto; }
+  #rkTable { width:100%; border-collapse:separate; border-spacing:0; font-variant-numeric:tabular-nums; }
+  #rkTable th { position:sticky; top:0; z-index:2; background:#f1f3f6; text-align:right; padding:7px 10px; border-bottom:1px solid var(--line); font-size:12px; font-weight:600; color:var(--muted); white-space:nowrap; user-select:none; }
+  #rkTable th.l { text-align:left; }
+  #rkTable th.s { cursor:pointer; }
+  #rkTable th.s:hover { color:var(--accent); }
+  #rkTable th.sorted { color:var(--text); box-shadow:inset 0 -2px 0 var(--accent); }
+  #rkTable td { padding:5px 10px; border-bottom:1px solid #edf0f3; text-align:right; white-space:nowrap; }
+  #rkTable td.l { text-align:left; white-space:normal; }
+  #rkTable td.n { width:48px; color:var(--muted); }
+  #rkTable tbody tr { cursor:pointer; }
+  #rkTable tbody tr:hover { background:#f3f7ff; }
+  #rkTable tbody tr.sel { background:#e2ebff; }
+  #rkTable td.l div { display:flex; flex-direction:column; word-break:break-word; }
+  #rkTable td.l small { display:flex; align-items:center; gap:5px; color:var(--muted); font-size:11px; }
+  #rkTable td.l small i { width:8px; height:8px; border-radius:2px; flex:none; }
+  .bar { display:flex; align-items:center; justify-content:flex-end; gap:8px; width:250px; }
+  .bar .track { flex:1; min-width:70px; height:8px; background:#eef0f4; border-radius:4px; overflow:hidden; }
+  .bar .track i { display:block; height:100%; background:var(--accent); border-radius:4px; }
+  .bar .v { min-width:44px; font-weight:600; }
+  .bar .p { min-width:52px; color:var(--muted); }
+  #rkTable .go { padding:1px 8px; line-height:1.3; }
+  #rkTable td.none { text-align:center; color:var(--muted); padding:28px; white-space:normal; }
+  #status { color:var(--muted); margin-left:auto; }
+  #status.err { color:#c0392b; }
+  main { flex:1; min-height:0; display:flex; }
+  #stage { position:relative; flex:1; min-width:0; background:
+      radial-gradient(circle, #d6dae1 1px, transparent 1px) 0 0/22px 22px, var(--bg); }
+  #stage.drag::after { content:attr(data-drop); position:absolute; inset:10px; border:3px dashed var(--accent); border-radius:12px; background:rgba(47,111,237,.08); display:grid; place-items:center; font-size:20px; color:var(--accent); z-index:30; }
+  svg { width:100%; height:100%; display:block; cursor:grab; touch-action:none; user-select:none; }
+  svg.panning { cursor:grabbing; }
+  #empty { position:absolute; inset:0; display:grid; place-items:center; text-align:center; color:var(--muted); pointer-events:none; line-height:1.7; }
+  #empty b { color:var(--text); font-size:16px; }
+  #info { position:absolute; left:12px; top:10px; background:rgba(255,255,255,.92); border:1px solid var(--line); border-radius:6px; padding:4px 10px; color:var(--muted); pointer-events:none; }
+  #legend { position:absolute; left:12px; bottom:12px; max-width:62%; display:none; flex-wrap:wrap; gap:4px 14px; background:rgba(255,255,255,.92); border:1px solid var(--line); border-radius:6px; padding:5px 10px; color:var(--muted); font-size:12px; pointer-events:none; }
+  #legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+  #warn { position:absolute; left:12px; bottom:56px; background:#fff4e5; border:1px solid #f5c37a; color:#8a5300; border-radius:6px; padding:5px 10px; display:none; }
+  #zoom { position:absolute; right:12px; bottom:12px; display:flex; gap:6px; }
+  #tip { position:fixed; z-index:40; pointer-events:none; background:#1f2933; color:#fff; padding:5px 9px; border-radius:6px; font-size:12px; line-height:1.45; white-space:pre; max-width:560px; display:none; }
+  aside { width:380px; border-left:1px solid var(--line); background:var(--panel); overflow:auto; padding:12px 14px; }
+  aside h2 { font-size:15px; margin:0 0 4px; word-break:break-word; }
+  aside h3 { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:16px 0 6px; }
+  aside .meta { color:var(--muted); margin-bottom:8px; }
+  aside .tag { display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border:1px solid var(--line); border-radius:999px; margin:2px 0 6px; }
+  aside .tag i { width:10px; height:10px; border-radius:3px; }
+  aside .sig { font:12px Consolas, "Cascadia Mono", monospace; color:var(--muted); word-break:break-all; margin-bottom:8px; }
+  aside ul { list-style:none; margin:0; padding:0; }
+  aside li a { display:flex; justify-content:space-between; gap:10px; padding:3px 6px; border-radius:4px; color:var(--text); text-decoration:none; cursor:pointer; word-break:break-word; }
+  aside li a small { color:var(--muted); white-space:nowrap; }
+  aside li a:hover { background:#eef3ff; color:var(--accent); }
+  aside pre { margin:0; padding:8px; background:#f3f4f6; border-radius:6px; font:12px Consolas, "Cascadia Mono", monospace; white-space:pre-wrap; word-break:break-word; max-height:420px; overflow:auto; }
+  aside .hint { color:var(--muted); line-height:1.6; }
+  /* styles repris dans l'export SVG */
+  .edge { fill:none; stroke:#9aa4b2; stroke-width:1.3; opacity:.6; marker-end:url(#arrow); }
+  .edge.on { stroke:#2f6fed; stroke-width:2.2; opacity:1; marker-end:url(#arrowOn); }
+  svg.big .edge { stroke-width:.8; opacity:.35; marker-end:none; }
+  svg.big .edge.on { stroke-width:2.2; opacity:1; marker-end:url(#arrowOn); }
+  svg.dim .edge:not(.on) { opacity:.06; }
+  .node { cursor:pointer; }
+  .node .box { fill:#fff; stroke:#b8c0cc; stroke-width:1.2; }
+  .node:hover .box, .node.on .box { stroke:#2f6fed; }
+  .node.sel .box { stroke:#2f6fed; stroke-width:2.6; }
+  .node.focus .box { fill:#eef3ff; stroke:#1f2933; stroke-width:2.2; }
+  .node text { font:12px "Segoe UI", system-ui, Arial, sans-serif; fill:#1f2933; pointer-events:none; }
+  .node text.tbl { font-size:9.5px; fill:#6b7684; }
+  .node text.more { font-size:10.5px; fill:#6b7684; }
+  .node .leafdot { fill:#16a34a; }
+  svg.dim .node:not(.on) { opacity:.22; }
+  .node .tint { display:none; pointer-events:none; }
+  svg.lod .node text { display:none; }
+  /* très dézoomé : blocs pleins colorés par table et liens à épaisseur constante, pour voir la structure */
+  svg.lod .node .tint { display:inline; opacity:.8; }
+  svg.lod .node .box { stroke:none; }
+  svg.lod .edge { vector-effect:non-scaling-stroke; stroke-width:1; opacity:.3; }
+  svg.lod.dim .edge:not(.on) { opacity:.04; }
+  svg.lod .edge.on { stroke-width:2; opacity:1; }
+  svg.lod .node.on .tint { stroke:#2f6fed; stroke-width:3; vector-effect:non-scaling-stroke; opacity:1; }
+  svg.lod .node.sel .tint { stroke:#1f2933; }
+</style>
+</head>
+<body>
+<header>
+  <h1 data-i18n="title"></h1>
+  <label class="btn primary" for="file" data-i18n="load"></label>
+  <input id="file" type="file" accept=".bim,.json,.csv,.txt">
+  <div class="seg" id="viewSeg">
+    <button id="viewGraph" class="act" disabled data-i18n="viewGraph" data-i18n-title="viewGraphT"></button>
+    <button id="viewRank" disabled data-i18n="viewRank" data-i18n-title="viewRankT"></button>
+  </div>
+  <button id="back" disabled data-i18n-title="backT">←</button>
+  <div id="searchWrap">
+    <input id="search" type="search" data-i18n-ph="searchPh" autocomplete="off" disabled>
+    <ul id="suggest"></ul>
+  </div>
+  <select id="mode" data-i18n-title="modeT" disabled>
+    <option value="down" data-i18n="mDown"></option>
+    <option value="up" data-i18n="mUp"></option>
+    <option value="both" data-i18n="mBoth"></option>
+    <option value="all" data-i18n="mAll"></option>
+  </select>
+  <select id="depth" data-i18n-title="depthT" disabled>
+    <option value="1" data-i18n="depthN" data-n="1"></option><option value="2" data-i18n="depthN" data-n="2"></option><option value="3" data-i18n="depthN" data-n="3"></option>
+    <option value="4" data-i18n="depthN" data-n="4"></option><option value="5" data-i18n="depthN" data-n="5"></option><option value="6" data-i18n="depthN" data-n="6"></option>
+    <option value="8" data-i18n="depthN" data-n="8"></option><option value="99" selected data-i18n="depthAll"></option>
+  </select>
+  <div id="tblWrap">
+    <button id="tblBtn" disabled data-i18n-title="tblT">Tables ▾</button>
+    <div id="tblPanel">
+      <div class="thead"><a id="tblAll" data-i18n="tblAll"></a><a id="tblNone" data-i18n="tblNone"></a></div>
+      <div id="tblList"></div>
+      <div class="note" data-i18n="tblNote"></div>
+    </div>
+  </div>
+  <div id="degWrap" data-i18n-title="degT">
+    <select id="degMetric" disabled>
+      <option value="usedBy" data-i18n="dUsedBy"></option>
+      <option value="deps" data-i18n="dDeps"></option>
+      <option value="total" data-i18n="dTotal"></option>
+    </select>
+    <input id="degMin" type="range" min="0" max="0" step="1" value="0" disabled>
+    <output id="degVal"></output>
+  </div>
+  <button id="exportSvg" disabled data-i18n="exportSvg"></button>
+  <span id="status"></span>
+  <div class="seg" id="langSeg" role="group" aria-label="Language">
+    <button id="langFr" data-lang="fr" title="Français">FR</button>
+    <button id="langEn" data-lang="en" title="English">EN</button>
+  </div>
+</header>
+<main>
+  <div id="stage">
+    <svg id="svg" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9aa4b2"/></marker>
+        <marker id="arrowOn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fed"/></marker>
+      </defs>
+      <g id="viewport"><g id="edges"></g><g id="nodes"></g></g>
+    </svg>
+    <div id="empty"><div data-i18n-html="empty"></div></div>
+    <div id="info"></div>
+    <div id="legend"></div>
+    <div id="warn"></div>
+    <div id="zoom"><button id="zin" title="Zoom +">+</button><button id="zout" title="Zoom -">−</button><button id="fit" data-i18n="fit" data-i18n-title="fitT"></button></div>
+  </div>
+  <section id="rank">
+    <div class="rtool">
+      <label><span data-i18n="sortBy"></span>
+        <select id="rkSort">
+          <option value="impact" data-i18n="sImpact"></option>
+          <option value="direct" data-i18n="sDirect"></option>
+          <option value="finals" data-i18n="sFinals"></option>
+          <option value="deps" data-i18n="sDeps"></option>
+          <option value="greedy" data-i18n="sGreedy"></option>
+        </select>
+      </label>
+      <label><span data-i18n="show"></span>
+        <select id="rkTop">
+          <option value="25" data-i18n="topN" data-n="25"></option><option value="50" data-i18n="topN" data-n="50"></option><option value="100" selected data-i18n="topN" data-n="100"></option>
+          <option value="200" data-i18n="topN" data-n="200"></option><option value="500" data-i18n="topN" data-n="500"></option><option value="all" data-i18n="topAll"></option>
+        </select>
+      </label>
+      <input id="rkFilter" type="search" data-i18n-ph="filterPh" autocomplete="off">
+      <button id="rkCsv" data-i18n="csv" data-i18n-title="csvT"></button>
+      <span id="rkSum"></span>
+    </div>
+    <div class="rnote" data-i18n-html="note"></div>
+    <div class="rwrap">
+      <table id="rkTable">
+        <thead><tr>
+          <th class="l">#</th>
+          <th class="l" data-i18n="thMeasure"></th>
+          <th class="s" data-k="impact" data-i18n="thImpact" data-i18n-title="thImpactT"></th>
+          <th class="s" data-k="direct" data-i18n="thDirect" data-i18n-title="thDirectT"></th>
+          <th class="s" data-k="finals" data-i18n="thFinals" data-i18n-title="thFinalsT"></th>
+          <th class="s" data-k="deps" data-i18n="thDeps" data-i18n-title="thDepsT"></th>
+          <th class="s" data-k="greedy" data-i18n="thCum" data-i18n-title="thCumT"></th>
+          <th></th>
+        </tr></thead>
+        <tbody id="rkBody"></tbody>
+      </table>
+    </div>
+  </section>
+  <aside id="details"><p class="hint" data-i18n-html="hint"></p></aside>
+</main>
+<div id="tip"></div>
+
+<script>
+/* ===================== Cœur : parsing + graphe + mise en page (sans DOM) ===================== */
+const Core = (() => {
+  const SEP = "\u0001";
+  const REF = /(?:'((?:[^']|'')+)'|([A-Za-z_][\w.]*))?\[([^\]]+)\]/g;
+  // une seule passe : commentaires, littéraux texte, noms de table 'X' et références [X] sont reconnus dans l'ordre d'apparition
+  const TOKEN = /\/\*[\s\S]*?\*\/|\/\/[^\n]*|--[^\n]*|"(?:[^"]|"")*"|'(?:[^']|'')*'|\[[^\]]*\]/g;
+  const keyOf = (t, n) => t + SEP + n;
+  const lc = s => s.toLowerCase();
+  const fail = key => Object.assign(new Error(key), { i18n: key }); // message traduit côté interface
+
+  function stripDax(e) {
+    return e.replace(TOKEN, m => m[0] === '"' ? '""' : (m[0] === "'" || m[0] === "[") ? m : " ");
+  }
+
+  function createGraph(items) {
+    const nodes = items.map((it, id) => {
+      const label = it.name.trim();
+      return { id, table: it.table, name: it.name, label, lc: lc(label), expr: it.expr || "", deps: [], usedBy: [] };
+    });
+    const byKey = new Map(), byKeyCI = new Map(), byName = new Map(), byNameCI = new Map(), byLabel = new Map(), twins = new Map(), tcount = new Map();
+    for (const n of nodes) {
+      byKey.set(keyOf(n.table, n.name), n.id);
+      const kc = keyOf(lc(n.table), lc(n.name));
+      if (!byKeyCI.has(kc)) byKeyCI.set(kc, n.id);
+      if (!byName.has(n.name)) byName.set(n.name, n.id);
+      if (!byNameCI.has(lc(n.name))) byNameCI.set(lc(n.name), n.id);
+      if (!byLabel.has(n.label)) byLabel.set(n.label, n.id);
+      if (!twins.has(n.lc)) twins.set(n.lc, []);
+      twins.get(n.lc).push(n.id);
+      tcount.set(n.table, (tcount.get(n.table) || 0) + 1);
+    }
+    return {
+      nodes, byKey, byKeyCI, byName, byNameCI, byLabel, edgeCount: 0, hasExpr: false,
+      tables: [...tcount].map(([name, count]) => ({ name, count })),
+      twinsOf: id => twins.get(nodes[id].lc).filter(x => x !== id)
+    };
+  }
+
+  // DAX est insensible à la casse : on essaie d'abord le nom exact, puis sans casse
+  function resolve(g, table, name) {
+    return table
+      ? (g.byKey.get(keyOf(table, name)) ?? g.byKeyCI.get(keyOf(lc(table), lc(name))))
+      : (g.byName.get(name) ?? g.byNameCI.get(lc(name)));
+  }
+
+  function link(g, from, to) {
+    if (from === to) return;
+    const d = g.nodes[from].deps;
+    if (!d.includes(to)) d.push(to);
+  }
+
+  function finalize(g) {
+    let e = 0;
+    for (const n of g.nodes) for (const d of n.deps) { g.nodes[d].usedBy.push(n.id); e++; }
+    g.edgeCount = e;
+    return g;
+  }
+
+  function fromBim(text) {
+    const m = JSON.parse(text.replace(/^\uFEFF/, ""));
+    const tables = (m.model && m.model.tables) || m.tables || [];
+    const items = [];
+    for (const t of tables) for (const ms of (t.measures || [])) {
+      const expr = Array.isArray(ms.expression) ? ms.expression.join("\n") : (ms.expression || "");
+      items.push({ table: t.name, name: ms.name, expr });
+    }
+    if (!items.length) throw fail("errNoMeasure");
+    const g = createGraph(items);
+    g.hasExpr = true;
+    for (const n of g.nodes) {
+      const c = stripDax(n.expr);
+      REF.lastIndex = 0;
+      let mt;
+      while ((mt = REF.exec(c))) {
+        const tq = mt[1] ? mt[1].replace(/''/g, "'") : mt[2];
+        const id = resolve(g, tq, mt[3]);
+        if (id !== undefined) link(g, n.id, id);
+      }
+    }
+    return finalize(g);
+  }
+
+  function parseCsv(text, delim) {
+    const rows = []; let row = [], cell = "", q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+      else if (c === '"') q = true;
+      else if (c === delim) { row.push(cell); cell = ""; }
+      else if (c === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
+      else if (c !== "\r") cell += c;
+    }
+    if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+  }
+
+  function fromCsv(text) {
+    text = text.replace(/^\uFEFF/, "");
+    const nl = text.indexOf("\n");
+    const first = nl >= 0 ? text.slice(0, nl) : text;
+    const delim = first.split(";").length >= first.split(",").length ? ";" : ",";
+    const rows = parseCsv(text, delim).filter(r => r.length > 1);
+    if (!rows.length) throw fail("errCsvEmpty");
+    const head = rows[0].map(h => h.trim().toLowerCase());
+    const iT = head.indexOf("table"), iM = head.indexOf("measure"), iE = head.indexOf("expression");
+    const iD = head.findIndex(h => h === "directdependencies" || h === "dependencies");
+    if (iT < 0 || iM < 0 || iD < 0) throw fail("errCsvCols");
+    const data = rows.slice(1).filter(r => r[iM]);
+    const g = createGraph(data.map(r => ({ table: r[iT], name: r[iM], expr: iE >= 0 ? r[iE] : "" })));
+    g.hasExpr = iE >= 0;
+    data.forEach((r, id) => {
+      for (const s of (r[iD] || "").split(" | ")) {
+        if (!s.trim()) continue;
+        const m = /^([\s\S]*?)\[([\s\S]*)\]$/.exec(s.trim());
+        const to = m ? resolve(g, m[1], m[2]) : g.byLabel.get(s.trim());
+        if (to !== undefined) link(g, id, to);
+      }
+    });
+    return finalize(g);
+  }
+
+  function load(text) {
+    const t = text.replace(/^\uFEFF/, "").trimStart();
+    return t.startsWith("{") ? fromBim(text) : fromCsv(text);
+  }
+
+  function search(g, q, enabled, limit = 30) {
+    const toks = lc(q).split(/\s+/).filter(Boolean);
+    if (!toks.length) return [];
+    const out = [];
+    for (const n of g.nodes) {
+      if (enabled && !enabled.has(n.table)) continue;
+      const hay = n.lc + " " + lc(n.table);
+      if (toks.every(t => hay.includes(t))) out.push(n);
+    }
+    const ql = lc(q.trim());
+    const rank = n => n.lc === ql ? 0 : n.lc.startsWith(ql) ? 1 : 2;
+    out.sort((a, b) => rank(a) - rank(b) || a.label.length - b.label.length || a.id - b.id);
+    return out.slice(0, limit);
+  }
+
+  /* Rang de chaque nœud = plus long chemin depuis les racines (DFS itératif ; les arcs de retour d'éventuels cycles sont ignorés). */
+  function layersOf(starts, next) {
+    const cache = new Map();
+    const nx = u => { let a = cache.get(u); if (!a) { a = next(u); cache.set(u, a); } return a; };
+    const seen = new Set(), order = [];
+    for (const s of starts) {
+      if (seen.has(s)) continue;
+      seen.add(s);
+      const stack = [[s, 0]];
+      while (stack.length) {
+        const top = stack[stack.length - 1], a = nx(top[0]);
+        if (top[1] < a.length) { const v = a[top[1]++]; if (!seen.has(v)) { seen.add(v); stack.push([v, 0]); } }
+        else { order.push(top[0]); stack.pop(); }
+      }
+    }
+    const pos = new Map();
+    for (let i = order.length - 1, k = 0; i >= 0; i--, k++) pos.set(order[i], k);
+    const dist = new Map(order.map(id => [id, 0]));
+    for (let i = order.length - 1; i >= 0; i--) {
+      const u = order[i], du = dist.get(u);
+      for (const v of nx(u)) if (pos.get(v) > pos.get(u) && dist.get(v) < du + 1) dist.set(v, du + 1);
+    }
+    return dist;
+  }
+
+  /* Sous-graphe + mise en page en colonnes (gauche → droite : consommateurs → mesure → dépendances).
+     mode "all" : toutes les mesures des tables actives, colonnes découpées en sous-colonnes quand elles sont très hautes. */
+  // nombre de mesures liées, selon le critère choisi pour le filtre curseur
+  const METRICS = { usedBy: n => n.usedBy.length, deps: n => n.deps.length, total: n => n.usedBy.length + n.deps.length };
+
+  function layout(g, o) {
+    const { focus, mode, measure, measureSub } = o, maxDepth = o.maxDepth || 99;
+    const NODE_H = o.nodeH || 40, ROW_GAP = o.rowGap ?? 12, COL_GAP = o.colGap || 110, SUB_GAP = 28, PAD = 34, MIN_W = 130, MAX_W = 340;
+    const enabled = o.enabled || null, all = mode === "all";
+    const minC = o.minCount || 0, mf = METRICS[o.metric] || METRICS.usedBy;
+    const ok = id => (!enabled || enabled.has(g.nodes[id].table)) && (!minC || mf(g.nodes[id]) >= minC);
+
+    const layer = new Map(), side = new Map();
+    let ids;
+    if (all) {
+      ids = g.nodes.filter(n => ok(n.id)).map(n => n.id);
+      const inSet = new Set(ids);
+      const dist = layersOf(ids, u => g.nodes[u].deps.filter(v => inSet.has(v)));
+      for (const id of ids) layer.set(id, dist.get(id) ?? 0);
+    } else {
+      side.set(focus, 0);
+      const grow = (adj, s) => {
+        let frontier = [focus];
+        for (let d = 0; d < maxDepth && frontier.length; d++) {
+          const next = [];
+          for (const u of frontier) for (const v of g.nodes[u][adj]) {
+            if (side.has(v) || !ok(v)) continue;
+            side.set(v, s); next.push(v);
+          }
+          frontier = next;
+        }
+      };
+      if (mode !== "up") grow("deps", 1);
+      if (mode !== "down") grow("usedBy", -1);
+      layer.set(focus, 0);
+      const assign = (adj, s) => {
+        const dist = layersOf([focus], u => g.nodes[u][adj].filter(v => side.get(v) === s));
+        for (const [id, dd] of dist) if (id !== focus) layer.set(id, s * dd);
+      };
+      if (mode !== "up") assign("deps", 1);
+      if (mode !== "down") assign("usedBy", -1);
+      ids = [...side.keys()].filter(id => layer.has(id));
+    }
+    const idSet = new Set(ids);
+    const edges = [];
+    for (const u of ids) for (const v of g.nodes[u].deps) if (idSet.has(v)) edges.push({ from: u, to: v });
+    const rtl = edges.reduce((a, e) => a + (layer.get(e.from) >= layer.get(e.to) ? 1 : 0), 0);
+
+    // ordre dans les colonnes : balayages barycentriques
+    const tIdx = new Map(g.tables.map((t, i) => [t.name, i]));
+    const cmp = (a, b) => { const x = g.nodes[a], y = g.nodes[b]; return tIdx.get(x.table) - tIdx.get(y.table) || (x.lc < y.lc ? -1 : x.lc > y.lc ? 1 : 0) || a - b; };
+    const cols = new Map();
+    for (const id of ids) { const l = layer.get(id); if (!cols.has(l)) cols.set(l, []); cols.get(l).push(id); }
+    const keys = [...cols.keys()].sort((a, b) => a - b);
+    for (const l of keys) cols.get(l).sort(cmp);
+    const nb = new Map(ids.map(id => [id, []]));
+    for (const e of edges) { nb.get(e.from).push(e.to); nb.get(e.to).push(e.from); }
+    const rowH = NODE_H + ROW_GAP, y = new Map();
+    const place = l => { const c = cols.get(l); c.forEach((id, i) => y.set(id, (i - (c.length - 1) / 2) * rowH)); };
+    keys.forEach(place);
+    const sweep = (ks, okSide) => {
+      for (const l of ks) {
+        const c = cols.get(l), bc = new Map();
+        for (const id of c) {
+          let s = 0, n = 0;
+          for (const v of nb.get(id)) if (okSide(layer.get(v), l)) { s += y.get(v); n++; }
+          bc.set(id, n ? s / n : y.get(id));
+        }
+        c.sort((a, b) => bc.get(a) - bc.get(b));
+        place(l);
+      }
+    };
+    for (let i = 0; i < 4; i++) { sweep(keys, (nl, l) => nl < l); sweep([...keys].reverse(), (nl, l) => nl > l); }
+
+    // positions finales (sous-colonnes si une colonne dépasse `rows` mesures)
+    const rows = all ? Math.max(40, Math.round(Math.sqrt(ids.length) * 1.6)) : Infinity;
+    const pos = new Map();
+    let x = 0;
+    for (const l of keys) {
+      const c = cols.get(l);
+      let w = MIN_W;
+      for (const id of c) { const n = g.nodes[id]; w = Math.max(w, Math.min(MAX_W, Math.max(measure(n.label), measureSub(n.table)) + PAD)); }
+      const nSub = Math.max(1, Math.ceil(c.length / rows)), per = Math.ceil(c.length / nSub);
+      c.forEach((id, i) => pos.set(id, { x: x + Math.floor(i / per) * (w + SUB_GAP), y: ((i % per) - (per - 1) / 2) * rowH, w }));
+      x += nSub * w + (nSub - 1) * SUB_GAP + COL_GAP;
+    }
+    const nodes = ids.map(id => {
+      const n = g.nodes[id], s = side.get(id), p = pos.get(id);
+      const hr = !all && s >= 0 && mode !== "up" ? n.deps.filter(v => ok(v) && !idSet.has(v)).length : 0;
+      const hl = !all && s <= 0 && mode !== "down" ? n.usedBy.filter(v => ok(v) && !idSet.has(v)).length : 0;
+      return { id, layer: layer.get(id), x: p.x, y: p.y, w: p.w, h: NODE_H, hr, hl };
+    });
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const n of nodes) { x0 = Math.min(x0, n.x - (n.hl ? 40 : 0)); x1 = Math.max(x1, n.x + n.w + (n.hr ? 40 : 0)); y0 = Math.min(y0, n.y - n.h / 2); y1 = Math.max(y1, n.y + n.h / 2); }
+    if (!nodes.length) { x0 = y0 = 0; x1 = y1 = 1; }
+    return { nodes, edges, rtl, bbox: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } };
+  }
+
+  /* ---------- analyse d'impact ---------- */
+  // Pour chaque mesure : impact = nombre de mesures qui l'utilisent directement ou indirectement (elle-même non comptée),
+  // finales = parmi elles, celles qu'aucune autre mesure n'utilise, deps = nombre de mesures dont elle dépend (transitif).
+  function analyze(g) {
+    if (g.an) return g.an;
+    const nodes = g.nodes, N = nodes.length, stamp = new Int32Array(N), stack = new Int32Array(N + 1);
+    let st = 0;
+    const reach = (s, adj, visit) => {
+      st++; stamp[s] = st;
+      let sp = 0, c = 0; stack[sp++] = s;
+      while (sp) for (const v of nodes[stack[--sp]][adj]) if (stamp[v] !== st) { stamp[v] = st; stack[sp++] = v; c++; if (visit) visit(v); }
+      return c;
+    };
+    const impact = new Int32Array(N), finals = new Int32Array(N), deps = new Int32Array(N);
+    for (const n of nodes) {
+      let f = 0;
+      impact[n.id] = reach(n.id, "usedBy", v => { if (!nodes[v].usedBy.length) f++; });
+      finals[n.id] = f;
+      deps[n.id] = reach(n.id, "deps");
+    }
+    // rang « compétition » : les ex æquo partagent le même rang
+    const ord = Array.from({ length: N }, (_, i) => i).sort((a, b) => impact[b] - impact[a] || a - b);
+    const rankOf = new Int32Array(N);
+    ord.forEach((id, i) => { rankOf[id] = i && impact[id] === impact[ord[i - 1]] ? rankOf[ord[i - 1]] : i + 1; });
+    return (g.an = { impact, finals, deps, rankOf, maxImpact: N ? impact[ord[0]] : 0 });
+  }
+
+  /* Ordre glouton : à chaque étape, la mesure qui impacte le plus de mesures pas encore touchées (évaluation paresseuse).
+     L'ensemble des mesures touchées est toujours « fermé vers le haut » (si une mesure est touchée, tous ses consommateurs le sont),
+     donc le parcours peut s'arrêter dès qu'il rencontre une mesure déjà touchée. */
+  function greedy(g, cands) {
+    const nodes = g.nodes, N = nodes.length, an = analyze(g);
+    const covered = new Uint8Array(N), stamp = new Int32Array(N), stack = new Int32Array(N + 1), pri = new Int32Array(N);
+    let st = 0;
+    cands.forEach((id, i) => { pri[id] = i; });
+    const gainOf = s => {
+      if (covered[s]) return 0;
+      st++; stamp[s] = st;
+      let sp = 0, c = 1; stack[sp++] = s;
+      while (sp) for (const v of nodes[stack[--sp]].usedBy) if (!covered[v] && stamp[v] !== st) { stamp[v] = st; stack[sp++] = v; c++; }
+      return c;
+    };
+    const take = s => {
+      if (covered[s]) return;
+      covered[s] = 1;
+      let sp = 0; stack[sp++] = s;
+      while (sp) for (const v of nodes[stack[--sp]].usedBy) if (!covered[v]) { covered[v] = 1; stack[sp++] = v; }
+    };
+    const heap = cands.map(id => ({ id, gain: an.impact[id] + 1, round: 0 })); // déjà trié : c'est un tas valide
+    const before = (a, b) => a.gain > b.gain || (a.gain === b.gain && pri[a.id] < pri[b.id]);
+    const push = x => {
+      let i = heap.push(x) - 1;
+      while (i > 0) { const p = (i - 1) >> 1; if (!before(heap[i], heap[p])) break; [heap[i], heap[p]] = [heap[p], heap[i]]; i = p; }
+    };
+    const pop = () => {
+      const top = heap[0], last = heap.pop();
+      if (heap.length) {
+        heap[0] = last;
+        for (let i = 0; ;) {
+          const l = 2 * i + 1, r = l + 1; let m = i;
+          if (l < heap.length && before(heap[l], heap[m])) m = l;
+          if (r < heap.length && before(heap[r], heap[m])) m = r;
+          if (m === i) break;
+          [heap[i], heap[m]] = [heap[m], heap[i]]; i = m;
+        }
+      }
+      return top;
+    };
+    const out = []; let round = 1;
+    while (heap.length) {
+      const t = pop();
+      if (t.round === round || t.gain === 0) { out.push(t.id); take(t.id); round++; }
+      else { t.gain = gainOf(t.id); t.round = round; push(t); }
+    }
+    return out;
+  }
+
+  /* Classement des mesures (celles des tables actives) + couverture cumulée dans l'ordre obtenu.
+     key : impact | direct | finals | deps | greedy. Les compteurs portent toujours sur tout le modèle. */
+  function rank(g, key, enabled) {
+    const nodes = g.nodes, N = nodes.length, an = analyze(g);
+    const tie = (a, b) => nodes[a].lc < nodes[b].lc ? -1 : nodes[a].lc > nodes[b].lc ? 1 : a - b;
+    const byImpact = (a, b) => an.impact[b] - an.impact[a] || nodes[b].usedBy.length - nodes[a].usedBy.length || an.finals[b] - an.finals[a] || tie(a, b);
+    const sorters = {
+      direct: (a, b) => nodes[b].usedBy.length - nodes[a].usedBy.length || byImpact(a, b),
+      finals: (a, b) => an.finals[b] - an.finals[a] || byImpact(a, b),
+      deps: (a, b) => an.deps[b] - an.deps[a] || byImpact(a, b)
+    };
+    const cands = [];
+    for (const n of nodes) if (!enabled || enabled.has(n.table)) cands.push(n.id);
+    cands.sort(byImpact);
+    const ids = key === "greedy" ? greedy(g, cands) : sorters[key] ? cands.slice().sort(sorters[key]) : cands;
+
+    const covered = new Uint8Array(N), stack = new Int32Array(N + 1), cum = new Int32Array(ids.length);
+    let tot = 0;
+    ids.forEach((s, i) => {
+      if (!covered[s]) {
+        covered[s] = 1; tot++;
+        let sp = 0; stack[sp++] = s;
+        while (sp) for (const v of nodes[stack[--sp]].usedBy) if (!covered[v]) { covered[v] = 1; tot++; stack[sp++] = v; }
+      }
+      cum[i] = tot;
+    });
+    return { ids, cum, total: N };
+  }
+
+  return { load, fromBim, fromCsv, search, layout, stripDax, METRICS, analyze, rank };
+})();
+</script>
+
+<script>
+/* ===================== Interface ===================== */
+(() => {
+  const NODE_H = 40;
+  const TABLE_COLORS = ["#2f6fed", "#8b5cf6", "#f59e0b", "#14b8a6", "#ec4899", "#84cc16", "#ef4444", "#0ea5e9", "#a16207", "#64748b"];
+  const $ = id => document.getElementById(id);
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = $("svg"), vp = $("viewport"), edgesG = $("edges"), nodesG = $("nodes"), stage = $("stage"), tip = $("tip");
+  const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+  const ctx = document.createElement("canvas").getContext("2d");
+  const FONT = '12px "Segoe UI", system-ui, Arial, sans-serif', FONT_SUB = '9.5px "Segoe UI", system-ui, Arial, sans-serif';
+  const measure = t => { ctx.font = FONT; return ctx.measureText(t).width; };
+  const measureSub = t => { ctx.font = FONT_SUB; return ctx.measureText(t).width; };
+  /* ---------- langue (FR / EN) ---------- */
+  const LOCALE = { fr: "fr-FR", en: "en-US" };
+  let lang = (() => {
+    try { const s = localStorage.getItem("mg-lang"); if (s === "fr" || s === "en") return s; } catch (e) { /* stockage indisponible */ }
+    return /^fr/i.test(navigator.language || "") ? "fr" : "en";
+  })();
+  const fmt = n => n.toLocaleString(LOCALE[lang]);
+  // valeurs : texte avec {param}, ou fonction (params) => texte quand l'accord singulier/pluriel est nécessaire
+  const I18N = {
+    fr: {
+      title: "Graphe des mesures DAX", load: "Charger .bim / .csv",
+      viewGraph: "Graphe", viewGraphT: "Graphe des dépendances",
+      viewRank: "Classement", viewRankT: "Classer les mesures selon leur impact sur le reste du modèle",
+      backT: "Revenir à la mesure précédente", searchPh: "Rechercher une mesure…", modeT: "Sens du graphe",
+      mDown: "Dépendances (ce qu'elle utilise) →", mUp: "← Consommateurs (qui l'utilise)", mBoth: "← Les deux →", mAll: "Tout le modèle (toutes les mesures)",
+      depthT: "Profondeur", depthN: "Profondeur {n}", depthAll: "Toute la profondeur",
+      tblT: "Filtrer les mesures par table", tblAll: "Toutes", tblNone: "Aucune",
+      tblNote: "Le filtre masque les mesures des tables décochées. Dans les vues centrées sur une mesure, le parcours des liens s'arrête aux tables masquées ; la mesure choisie reste toujours affichée.",
+      only: "seule", onlyT: "Afficher uniquement cette table",
+      degT: "N'afficher que les mesures liées à au moins x autres mesures. Dans les vues centrées sur une mesure, la mesure choisie reste toujours affichée et le parcours des liens s'arrête aux mesures masquées.",
+      dUsedBy: "Utilisée par ≥", dDeps: "Utilise ≥", dTotal: "Liée à ≥ (utilise + utilisée par)",
+      degAll: "Toutes les mesures", degCount: p => `≥ ${fmt(p.min)} · ${fmt(p.c)} mesure${p.c > 1 ? "s" : ""}`,
+      exportSvg: "Exporter SVG", noFile: "Aucun fichier chargé", loading: "Chargement de {name}…",
+      loaded: p => `${p.name} — ${fmt(p.nodes)} mesures · ${fmt(p.edges)} liens · ${p.tables} table(s)`,
+      errPrefix: "Erreur : ", errNoMeasure: "Aucune mesure trouvée dans ce fichier .bim.", errCsvEmpty: "Fichier CSV vide.",
+      errCsvCols: "CSV non reconnu : colonnes Table, Measure et DirectDependencies attendues.",
+      fit: "Ajuster", fitT: "Ajuster à l'écran", drop: "Déposez le fichier ici",
+      empty: "<b>Glissez-déposez ici</b><br>un fichier <code>.bim</code> (modèle tabulaire)<br>ou un CSV de dépendances<br><br>puis recherchez une mesure pour afficher son graphe,<br>ou choisissez « Tout le modèle ».",
+      hint: "Cliquez sur un nœud pour voir ses détails.<br>Double-clic (ou lien) pour recentrer le graphe sur une mesure.<br>Molette = zoom, glisser = déplacer.",
+      infoCount: p => `${fmt(p.nodes)} nœuds · ${fmt(p.edges)} liens`, infoFiltered: " — modèle filtré", infoFull: " — modèle complet",
+      lblUsedBy: "utilisée par", lblDeps: "utilise", lblTotal: "liée à",
+      infoMin: p => ` · ${p.metric} ≥ ${fmt(p.min)} mesure(s)`,
+      infoNone: "Aucune mesure à afficher (vérifiez le filtre de tables et le curseur)",
+      legendLeaf: "Mesure de base (sans mesure en dépendance)",
+      warnRtl: p => `${p.n} lien(s) circulaire(s) ou à rebours détecté(s) dans les références.`,
+      tableLbl: "Table : {name}", metaUses: p => `utilise ${p.d} · utilisée par ${p.u}`,
+      impact: p => `Impact en aval : ${fmt(p.im)} mesure${p.im > 1 ? "s" : ""} (${pct(p.im)} du modèle) dont ${fmt(p.fin)} finale${p.fin > 1 ? "s" : ""} · n°${fmt(p.rk)} du modèle`,
+      impactNone: "Impact en aval : aucun (mesure finale, personne ne l'utilise)",
+      dependsOn: p => `Dépend, directement ou non, de ${fmt(p.n)} mesure${p.n > 1 ? "s" : ""}`,
+      btnImpact: "Voir l'impact dans le graphe", btnIsolate: "Isoler cette mesure et ses liens", btnRecenter: "Recentrer le graphe ici",
+      twins: "Même nom dans une autre table ({n})", uses: "Utilise ({n})", usedBy: "Utilisée par ({n})",
+      dax: "Expression DAX", noExpr: "(aucune expression)",
+      csvNoExpr: "Expression indisponible : ce CSV ne contient pas la colonne Expression. Chargez le fichier .bim pour voir le code DAX.",
+      more: "… et {n} autres", tip: p => `Utilise ${p.d} mesure(s) · utilisée par ${p.u}`,
+      sortBy: "Classer par", sImpact: "Impact total (mesures impactées en aval)", sDirect: "Consommateurs directs", sFinals: "Mesures finales touchées",
+      sDeps: "Dépendances (ce qu'elle utilise, transitif)", sGreedy: "Couverture optimale (le cumul grimpe le plus vite)",
+      show: "Afficher", topN: "Top {n}", topAll: "Tout", filterPh: "Filtrer par nom ou table…",
+      csv: "Exporter CSV", csvT: "Exporter tout le classement (tables cochées) au format CSV",
+      note: "<b>Impact</b> = mesures qui utilisent celle-ci (directement ou non) : ce que vous faites bouger en la modifiant. <b>Finales</b> = parmi elles, celles que nulle autre mesure n'utilise. <b>Cumul</b> = part du modèle touchée en intervenant sur toutes les lignes jusqu'ici (une mesure commune n'est comptée qu'une fois). « Couverture optimale » = meilleur ordre pour couvrir le plus de modèle avec le moins de mesures.",
+      thMeasure: "Mesure", thImpact: "Impact", thImpactT: "Impact total : nombre de mesures qui utilisent celle-ci, directement ou indirectement",
+      thDirect: "Directs", thDirectT: "Consommateurs directs : mesures dont l'expression cite celle-ci",
+      thFinals: "Finales", thFinalsT: "Mesures finales touchées : parmi les mesures impactées, celles qu'aucune autre mesure n'utilise",
+      thDeps: "Dépend de", thDepsT: "Nombre de mesures dont celle-ci dépend, directement ou indirectement",
+      thCum: "Cumul", thCumT: "Part du modèle touchée en intervenant sur toutes les mesures classées jusqu'à cette ligne (les mesures partagées ne comptent qu'une fois). Clic = tri par couverture optimale",
+      goT: "Voir les mesures impactées dans le graphe",
+      rNone: "Aucune mesure ne correspond au filtre.", rEmpty: "Aucune mesure à classer (vérifiez le filtre de tables).",
+      rResults: p => `${fmt(p.total)} résultat${p.total > 1 ? "s" : ""} sur ${fmt(p.n)} mesures classées`,
+      rSum: p => `${fmt(p.k)} affichée${p.k > 1 ? "s" : ""} sur ${fmt(p.n)} · intervenir sur ${p.k > 1 ? `ces ${fmt(p.k)} mesures` : "cette mesure"} touche ${fmt(p.c)} mesure${p.c > 1 ? "s" : ""}, soit ${pct(p.c)} du modèle (${fmt(p.N)})`,
+      csvHead: "Rang;Table;Mesure;Impact;ImpactPct;ConsommateursDirects;MesuresFinales;DependDe;CumulMesures;CumulPct",
+      csvFile: "classement_impact_mesures.csv", svgFull: "modele_complet"
+    },
+    en: {
+      title: "DAX measure graph", load: "Load .bim / .csv",
+      viewGraph: "Graph", viewGraphT: "Dependency graph",
+      viewRank: "Ranking", viewRankT: "Rank measures by their impact on the rest of the model",
+      backT: "Back to the previous measure", searchPh: "Search for a measure…", modeT: "Graph direction",
+      mDown: "Dependencies (what it uses) →", mUp: "← Consumers (what uses it)", mBoth: "← Both →", mAll: "Whole model (all measures)",
+      depthT: "Depth", depthN: "Depth {n}", depthAll: "Full depth",
+      tblT: "Filter measures by table", tblAll: "All", tblNone: "None",
+      tblNote: "The filter hides measures from unchecked tables. In views centered on a measure, link traversal stops at hidden tables; the selected measure is always shown.",
+      only: "only", onlyT: "Show this table only",
+      degT: "Only show measures linked to at least x other measures. In views centered on a measure, the selected measure is always shown and link traversal stops at hidden measures.",
+      dUsedBy: "Used by ≥", dDeps: "Uses ≥", dTotal: "Linked to ≥ (uses + used by)",
+      degAll: "All measures", degCount: p => `≥ ${fmt(p.min)} · ${fmt(p.c)} measure${p.c === 1 ? "" : "s"}`,
+      exportSvg: "Export SVG", noFile: "No file loaded", loading: "Loading {name}…",
+      loaded: p => `${p.name} — ${fmt(p.nodes)} measures · ${fmt(p.edges)} links · ${p.tables} table(s)`,
+      errPrefix: "Error: ", errNoMeasure: "No measure found in this .bim file.", errCsvEmpty: "Empty CSV file.",
+      errCsvCols: "Unrecognized CSV: expected columns Table, Measure and DirectDependencies.",
+      fit: "Fit", fitT: "Fit to screen", drop: "Drop the file here",
+      empty: "<b>Drag and drop here</b><br>a <code>.bim</code> file (tabular model)<br>or a dependencies CSV<br><br>then search for a measure to display its graph,<br>or pick \"Whole model\".",
+      hint: "Click a node to see its details.<br>Double-click (or link) to recenter the graph on a measure.<br>Wheel = zoom, drag = pan.",
+      infoCount: p => `${fmt(p.nodes)} nodes · ${fmt(p.edges)} links`, infoFiltered: " — filtered model", infoFull: " — full model",
+      lblUsedBy: "used by", lblDeps: "uses", lblTotal: "linked to",
+      infoMin: p => ` · ${p.metric} ≥ ${fmt(p.min)} measure(s)`,
+      infoNone: "No measure to display (check the table filter and the slider)",
+      legendLeaf: "Base measure (no measure dependency)",
+      warnRtl: p => `${p.n} circular or backward link(s) detected in the references.`,
+      tableLbl: "Table: {name}", metaUses: p => `uses ${p.d} · used by ${p.u}`,
+      impact: p => `Downstream impact: ${fmt(p.im)} measure${p.im === 1 ? "" : "s"} (${pct(p.im)} of the model), ${fmt(p.fin)} of them final · #${fmt(p.rk)} in the model`,
+      impactNone: "Downstream impact: none (final measure, nothing uses it)",
+      dependsOn: p => `Depends, directly or not, on ${fmt(p.n)} measure${p.n === 1 ? "" : "s"}`,
+      btnImpact: "Show impact in the graph", btnIsolate: "Isolate this measure and its links", btnRecenter: "Recenter the graph here",
+      twins: "Same name in another table ({n})", uses: "Uses ({n})", usedBy: "Used by ({n})",
+      dax: "DAX expression", noExpr: "(no expression)",
+      csvNoExpr: "Expression unavailable: this CSV has no Expression column. Load the .bim file to see the DAX code.",
+      more: "… and {n} more", tip: p => `Uses ${p.d} measure(s) · used by ${p.u}`,
+      sortBy: "Sort by", sImpact: "Total impact (downstream measures affected)", sDirect: "Direct consumers", sFinals: "Final measures affected",
+      sDeps: "Dependencies (what it uses, transitive)", sGreedy: "Best coverage (fastest cumulative growth)",
+      show: "Show", topN: "Top {n}", topAll: "All", filterPh: "Filter by name or table…",
+      csv: "Export CSV", csvT: "Export the whole ranking (checked tables) as CSV",
+      note: "<b>Impact</b> = measures that use this one (directly or not): what you move when you change it. <b>Final</b> = among them, those that no other measure uses. <b>Cumulative</b> = share of the model affected when working on every row so far (a shared measure counts once). “Best coverage” = best order to cover as much of the model as possible with as few measures as possible.",
+      thMeasure: "Measure", thImpact: "Impact", thImpactT: "Total impact: number of measures that use this one, directly or indirectly",
+      thDirect: "Direct", thDirectT: "Direct consumers: measures whose expression references this one",
+      thFinals: "Final", thFinalsT: "Final measures affected: among the impacted measures, those that no other measure uses",
+      thDeps: "Depends on", thDepsT: "Number of measures this one depends on, directly or indirectly",
+      thCum: "Cumulative", thCumT: "Share of the model affected when working on every ranked measure up to this row (shared measures count once). Click = sort by best coverage",
+      goT: "Show affected measures in the graph",
+      rNone: "No measure matches the filter.", rEmpty: "No measure to rank (check the table filter).",
+      rResults: p => `${fmt(p.total)} result${p.total === 1 ? "" : "s"} out of ${fmt(p.n)} ranked measures`,
+      rSum: p => `${fmt(p.k)} shown out of ${fmt(p.n)} · changing ${p.k > 1 ? `these ${fmt(p.k)} measures` : "this measure"} affects ${fmt(p.c)} measure${p.c === 1 ? "" : "s"}, ${pct(p.c)} of the model (${fmt(p.N)})`,
+      csvHead: "Rank,Table,Measure,Impact,ImpactPct,DirectConsumers,FinalMeasures,DependsOn,CumulativeMeasures,CumulativePct",
+      csvFile: "measure_impact_ranking.csv", svgFull: "full_model"
+    }
+  };
+  const t = (k, p = {}) => {
+    const v = I18N[lang][k] ?? I18N.fr[k] ?? k;
+    return typeof v === "function" ? v(p) : v.replace(/\{(\w+)\}/g, (_, x) => p[x] ?? "");
+  };
+  function applyStatic(root) {
+    root.querySelectorAll("[data-i18n]").forEach(e => { e.textContent = t(e.dataset.i18n, e.dataset); });
+    root.querySelectorAll("[data-i18n-html]").forEach(e => { e.innerHTML = t(e.dataset.i18nHtml); });
+    root.querySelectorAll("[data-i18n-title]").forEach(e => { e.title = t(e.dataset.i18nTitle); });
+    root.querySelectorAll("[data-i18n-ph]").forEach(e => { e.placeholder = t(e.dataset.i18nPh); });
+  }
+  const exactName = n => n.name.replace(/^\s+|\s+$/g, m => "␣".repeat(m.length));
+  const daxRef = n => (/^[A-Za-z_]\w*$/.test(n.table) ? n.table : "'" + n.table.replace(/'/g, "''") + "'") + "[" + exactName(n) + "]";
+
+  let G = null, focus = null, selected = null, current = null, fileName = "";
+  let rkCache = null, graphDirty = false;
+  const isRank = () => document.body.classList.contains("rank");
+  let enabled = new Set(), tableColor = new Map();
+  let history = [], nodeEls = new Map(), incident = new Map(), posById = new Map();
+  let onNodes = new Set(), onEdges = new Set(), selEl = null;
+  let view = { x: 0, y: 0, k: 1 }, autoFit = true;
+
+  const colorOf = t => tableColor.get(t) || "#64748b";
+  const modeVal = () => $("mode").value;
+  const focusNode = () => modeVal() === "all" ? null : focus;
+  const filterSet = () => (G && enabled.size === G.tables.length) ? null : enabled;
+  const truncate = (t, maxW) => {
+    if (measure(t) <= maxW) return t;
+    let lo = 0, hi = t.length;
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (measure(t.slice(0, mid) + "…") <= maxW) lo = mid; else hi = mid - 1; }
+    return t.slice(0, lo) + "…";
+  };
+
+  // le message est un callback pour pouvoir être retraduit au changement de langue
+  let statusFn = () => t("noFile"), statusErr = false;
+  function paintStatus() { const s = $("status"); s.textContent = statusFn(); s.className = statusErr ? "err" : ""; }
+  function setStatus(fn, err) { statusFn = fn; statusErr = !!err; paintStatus(); }
+  function syncControls() { $("depth").disabled = !G || modeVal() === "all"; }
+
+  /* ---------- chargement ---------- */
+  function loadText(text, name) {
+    try {
+      G = Core.load(text);
+    } catch (e) {
+      setStatus(() => t("errPrefix") + (e.i18n ? t(e.i18n) : e.message), true); return false;
+    }
+    fileName = name || "";
+    history = []; focus = null; selected = null; current = null;
+    nodeEls = new Map(); posById = new Map(); incident = new Map(); rkCache = null;
+    enabled = new Set(G.tables.map(t => t.name));
+    tableColor = new Map(G.tables.map((t, i) => [t.name, TABLE_COLORS[i % TABLE_COLORS.length]]));
+    buildTableFilter();
+    minCount = 0; $("degMetric").value = "usedBy"; buildSteps(); updateDeg();
+    for (const id of ["search", "mode", "exportSvg", "tblBtn", "degMetric", "degMin", "viewGraph", "viewRank"]) $(id).disabled = false;
+    syncControls();
+    $("empty").style.display = "none";
+    const st = { name: fileName, nodes: G.nodes.length, edges: G.edgeCount, tables: G.tables.length };
+    setStatus(() => t("loaded", st));
+    // mesure de départ : la plus utilisée parmi celles qui dépendent d'autres mesures
+    const pick = G.nodes.filter(n => n.deps.length).sort((a, b) => b.usedBy.length - a.usedBy.length)[0]?.id ?? 0;
+    refocus(pick, false);
+    if (isRank()) renderRank();
+    return true;
+  }
+
+  async function loadFile(file) {
+    setStatus(() => t("loading", { name: file.name }));
+    await new Promise(r => setTimeout(r, 20));
+    loadText(await file.text(), file.name);
+  }
+
+  $("file").addEventListener("change", e => { if (e.target.files[0]) loadFile(e.target.files[0]); e.target.value = ""; });
+  let dragN = 0;
+  window.addEventListener("dragenter", e => { e.preventDefault(); dragN++; stage.classList.add("drag"); });
+  window.addEventListener("dragleave", () => { if (--dragN <= 0) { dragN = 0; stage.classList.remove("drag"); } });
+  window.addEventListener("dragover", e => e.preventDefault());
+  window.addEventListener("drop", e => { e.preventDefault(); dragN = 0; stage.classList.remove("drag"); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
+
+  /* ---------- filtre de tables ---------- */
+  function buildTableFilter() {
+    const list = $("tblList"); list.replaceChildren();
+    for (const t of G.tables) {
+      const row = document.createElement("div"); row.className = "trow";
+      const lab = document.createElement("label");
+      const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = true; cb.dataset.t = t.name;
+      const sw = document.createElement("i"); sw.style.background = colorOf(t.name);
+      const nm = document.createElement("span"); nm.textContent = t.name; nm.title = t.name;
+      const ct = document.createElement("small"); ct.textContent = fmt(t.count);
+      lab.append(cb, sw, nm, ct);
+      const only = document.createElement("a"); only.dataset.i18n = "only"; only.dataset.i18nTitle = "onlyT";
+      row.append(lab, only); list.appendChild(row);
+      cb.addEventListener("change", () => { if (cb.checked) enabled.add(t.name); else enabled.delete(t.name); onFilterChange(); });
+      only.addEventListener("click", () => setTables([t.name]));
+    }
+    applyStatic(list);
+    updateTblBtn();
+  }
+  function updateTblBtn() { $("tblBtn").textContent = `Tables (${enabled.size}/${G ? G.tables.length : 0}) ▾`; }
+  function syncChecks() { $("tblList").querySelectorAll("input").forEach(cb => { cb.checked = enabled.has(cb.dataset.t); }); updateTblBtn(); }
+  function setTables(names) { enabled = new Set(names); syncChecks(); onFilterChange(); }
+  function onFilterChange() {
+    updateTblBtn(); updateDeg();
+    if (search.value && document.activeElement === search) search.dispatchEvent(new Event("input"));
+    render(true);
+    if (isRank()) renderRank();
+  }
+  $("tblBtn").addEventListener("click", e => { e.stopPropagation(); $("tblPanel").classList.toggle("open"); });
+  $("tblPanel").addEventListener("click", e => e.stopPropagation());
+  document.addEventListener("click", () => $("tblPanel").classList.remove("open"));
+  $("tblAll").addEventListener("click", () => setTables(G.tables.map(t => t.name)));
+  $("tblNone").addEventListener("click", () => setTables([]));
+
+  /* ---------- filtre curseur : mesures liées à au moins x autres mesures ---------- */
+  const METRIC_LABEL = { usedBy: "lblUsedBy", deps: "lblDeps", total: "lblTotal" };
+  let minCount = 0, steps = [0], degTimer = 0;
+  const metricVal = () => $("degMetric").value;
+  const mval = n => Core.METRICS[metricVal()](n);
+  const idxFor = v => { let i = 0; while (i + 1 < steps.length && steps[i + 1] <= v) i++; return i; };
+  // paliers du curseur : 0 à 10 un par un, puis de plus en plus espacés jusqu'au maximum du modèle
+  function buildSteps() {
+    let max = 0;
+    if (G) for (const n of G.nodes) max = Math.max(max, mval(n));
+    const base = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25, 30, 40, 50, 60, 75, 100, 125, 150, 200, 250, 300, 400, 500, 600, 750, 1000, 1500, 2000, 3000, 5000];
+    steps = base.filter(v => v < max); steps.push(max);
+    const sl = $("degMin");
+    sl.max = steps.length - 1;
+    minCount = steps[idxFor(minCount)];
+    sl.value = idxFor(minCount);
+  }
+  function updateDeg() {
+    let c = 0;
+    if (G && minCount) for (const n of G.nodes) if (enabled.has(n.table) && mval(n) >= minCount) c++;
+    $("degVal").textContent = minCount ? t("degCount", { min: minCount, c }) : t("degAll");
+  }
+  function setMin(v) {
+    const i = idxFor(v);
+    minCount = steps[i]; $("degMin").value = i; updateDeg();
+  }
+  $("degMin").addEventListener("input", () => {
+    minCount = steps[+$("degMin").value]; updateDeg();
+    clearTimeout(degTimer); degTimer = setTimeout(() => render(true), 120);
+  });
+  $("degMetric").addEventListener("change", () => { buildSteps(); updateDeg(); render(true); });
+
+  /* ---------- focus / sélection ---------- */
+  function refocus(id, push = true) {
+    if (push && focus != null && focus !== id) history.push(focus);
+    focus = id; selected = id;
+    $("back").disabled = !history.length;
+    $("search").value = G.nodes[id].label;
+    if (modeVal() === "all") {
+      const t = G.nodes[id].table;
+      if (!enabled.has(t)) { enabled.add(t); syncChecks(); updateDeg(); current = null; }
+      if (minCount && mval(G.nodes[id]) < minCount) { setMin(mval(G.nodes[id])); current = null; }
+      if (!current || current.mode !== "all") render(true);
+      highlight(id); centerOn(id);
+    } else render(true);
+    renderDetails(id);
+  }
+  function isolate(id) { $("mode").value = "both"; syncControls(); refocus(id); }
+  function select(id) { selected = id; highlight(id); renderDetails(id); }
+  $("back").addEventListener("click", () => { if (history.length) { const id = history.pop(); refocus(id, false); } });
+  $("mode").addEventListener("change", () => { syncControls(); render(true); if (modeVal() === "all" && focus != null) { highlight(selected); } });
+  $("depth").addEventListener("change", () => render(true));
+
+  /* ---------- rendu du graphe ---------- */
+  function render(fit) {
+    if (!G || focus == null) return;
+    if (isRank()) { graphDirty = true; return; } // le graphe est masqué : on le redessinera au retour
+    clearTimeout(degTimer);
+    const m = modeVal();
+    current = Core.layout(G, { focus, mode: m, maxDepth: +$("depth").value, enabled: filterSet(), minCount, metric: metricVal(), measure, measureSub, nodeH: NODE_H });
+    current.mode = m;
+    current.info = { min: minCount, metric: metricVal(), filtered: !!(minCount || filterSet()) };
+    nodeEls = new Map(); incident = new Map(); onNodes = new Set(); onEdges = new Set(); selEl = null;
+    posById = new Map(current.nodes.map(n => [n.id, n]));
+    const eFrag = document.createDocumentFragment(), nFrag = document.createDocumentFragment();
+
+    for (const e of current.edges) {
+      const a = posById.get(e.from), b = posById.get(e.to);
+      const x1 = a.x + a.w, y1 = a.y, x2 = b.x, y2 = b.y;
+      const dx = Math.max(40, Math.abs(x2 - x1) / 2);
+      const p = el("path", { class: "edge", d: `M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}` }, eFrag);
+      const rec = { from: e.from, to: e.to, el: p };
+      for (const k of [e.from, e.to]) { if (!incident.has(k)) incident.set(k, []); incident.get(k).push(rec); }
+    }
+    const fn = focusNode();
+    for (const n of current.nodes) {
+      const d = G.nodes[n.id];
+      const g = el("g", { class: "node" + (n.id === fn ? " focus" : ""), transform: `translate(${n.x},${n.y})`, "data-id": n.id }, nFrag);
+      el("rect", { class: "box", x: 0, y: -n.h / 2, width: n.w, height: n.h, rx: 6 }, g);
+      el("rect", { class: "tint", x: 0, y: -n.h / 2, width: n.w, height: n.h, rx: 6, fill: colorOf(d.table) }, g);
+      el("rect", { x: 0, y: -n.h / 2, width: 6, height: n.h, rx: 3, fill: colorOf(d.table) }, g);
+      el("text", { x: 15, y: -3 }, g).textContent = truncate(d.label, n.w - 34);
+      el("text", { class: "tbl", x: 15, y: 12 }, g).textContent = d.table;
+      if (!d.deps.length) el("circle", { class: "leafdot", cx: n.w - 11, cy: -n.h / 2 + 11, r: 4 }, g);
+      if (n.hr) el("text", { class: "more", x: n.w + 6, y: 4 }, g).textContent = "+" + n.hr;
+      if (n.hl) el("text", { class: "more", x: -6, y: 4, "text-anchor": "end" }, g).textContent = "+" + n.hl;
+      nodeEls.set(n.id, g);
+    }
+    edgesG.replaceChildren(eFrag); nodesG.replaceChildren(nFrag);
+    svg.classList.toggle("big", current.edges.length > 1200);
+    highlight(selected);
+
+    paintInfo();
+    if (fit) fitView();
+  }
+
+  // texte d'information, légende et avertissement : séparés du rendu pour pouvoir être retraduits
+  function paintInfo() {
+    if (!current) return;
+    const inf = current.info, N = current.nodes.length;
+    $("info").textContent = N
+      ? t("infoCount", { nodes: N, edges: current.edges.length }) + (current.mode === "all" ? (inf.filtered ? t("infoFiltered") : t("infoFull")) : "")
+        + (inf.min ? t("infoMin", { metric: t(METRIC_LABEL[inf.metric]), min: inf.min }) : "")
+      : t("infoNone");
+    const used = new Set(current.nodes.map(n => G.nodes[n.id].table));
+    const lg = $("legend"); lg.replaceChildren();
+    for (const tb of G.tables) if (used.has(tb.name)) {
+      const s = document.createElement("span"), i = document.createElement("i");
+      i.style.background = colorOf(tb.name); s.append(i, tb.name); lg.appendChild(s);
+    }
+    const leaf = document.createElement("span"), ld = document.createElement("i");
+    ld.style.background = "var(--leaf)"; ld.style.borderRadius = "50%"; leaf.append(ld, t("legendLeaf")); lg.appendChild(leaf);
+    lg.style.display = N ? "flex" : "none";
+    const w = $("warn");
+    w.style.display = current.rtl ? "block" : "none";
+    if (current.rtl) w.textContent = t("warnRtl", { n: current.rtl });
+  }
+
+  function highlight(id, hover) {
+    if (!hover && id === focusNode()) id = null; // le nœud central seul n'estompe pas le reste
+    for (const g of onNodes) g.classList.remove("on");
+    for (const e of onEdges) e.classList.remove("on");
+    onNodes = new Set(); onEdges = new Set();
+    if (id != null && nodeEls.has(id)) {
+      onNodes.add(nodeEls.get(id));
+      for (const e of incident.get(id) || []) {
+        e.el.classList.add("on"); onEdges.add(e.el);
+        onNodes.add(nodeEls.get(e.from === id ? e.to : e.from));
+      }
+      for (const g of onNodes) g.classList.add("on");
+    }
+    if (selEl) selEl.classList.remove("sel");
+    selEl = selected != null ? nodeEls.get(selected) || null : null;
+    if (selEl) selEl.classList.add("sel");
+    svg.classList.toggle("dim", onNodes.size > 0);
+  }
+
+  /* ---------- panneau de détails ---------- */
+  function linkList(parent, ids, max) {
+    const ul = document.createElement("ul");
+    for (const id of ids.slice(0, max)) {
+      const n = G.nodes[id];
+      const li = document.createElement("li"), a = document.createElement("a"), s = document.createElement("span"), sm = document.createElement("small");
+      s.textContent = n.label; sm.textContent = n.table; a.title = daxRef(n);
+      a.append(s, sm);
+      a.addEventListener("click", () => refocus(id));
+      li.appendChild(a); ul.appendChild(li);
+    }
+    if (ids.length > max) { const li = document.createElement("li"); li.className = "hint"; li.textContent = t("more", { n: fmt(ids.length - max) }); ul.appendChild(li); }
+    parent.appendChild(ul);
+  }
+  function renderDetails(id) {
+    const n = G.nodes[id], box = $("details");
+    box.replaceChildren();
+    const add = (tag, text, cls) => { const e = document.createElement(tag); e.textContent = text; if (cls) e.className = cls; box.appendChild(e); return e; };
+    add("h2", n.label);
+    const tag = add("div", "", "tag");
+    const sw = document.createElement("i"); sw.style.background = colorOf(n.table);
+    tag.append(sw, t("tableLbl", { name: n.table }));
+    add("div", daxRef(n), "sig");
+    add("div", t("metaUses", { d: n.deps.length, u: n.usedBy.length }), "meta");
+    const an = Core.analyze(G), im = an.impact[id];
+    add("div", im ? t("impact", { im, fin: an.finals[id], rk: an.rankOf[id] }) : t("impactNone"), "meta");
+    add("div", t("dependsOn", { n: an.deps[id] }), "meta");
+    if (isRank()) {
+      const b = document.createElement("button");
+      b.textContent = t("btnImpact");
+      b.addEventListener("click", () => goToGraph(id));
+      box.appendChild(b);
+    } else if (id !== focus || modeVal() === "all") {
+      const b = document.createElement("button");
+      b.textContent = modeVal() === "all" ? t("btnIsolate") : t("btnRecenter");
+      b.addEventListener("click", () => modeVal() === "all" ? isolate(id) : refocus(id));
+      box.appendChild(b);
+    }
+    const twins = G.twinsOf(id);
+    if (twins.length) { add("h3", t("twins", { n: twins.length })); linkList(box, twins, 20); }
+    add("h3", t("uses", { n: n.deps.length })); linkList(box, n.deps, 200);
+    add("h3", t("usedBy", { n: n.usedBy.length })); linkList(box, n.usedBy, 200);
+    add("h3", t("dax"));
+    if (n.expr) add("pre", n.expr);
+    else add("div", G.hasExpr ? t("noExpr") : t("csvNoExpr"), "hint");
+  }
+
+  /* ---------- vue classement : quelles mesures toucher en premier ---------- */
+  const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const pct = v => {
+    const p = G.nodes.length ? v / G.nodes.length * 100 : 0, o = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
+    const s = p > 0 && p < 0.1 ? "<" + (0.1).toLocaleString(LOCALE[lang], o) : p.toLocaleString(LOCALE[lang], o);
+    return lang === "fr" ? s + " %" : s + "%";
+  };
+  // classement mis en cache tant que critère et tables actives ne changent pas
+  function rankData() {
+    const key = $("rkSort").value, sig = [...enabled].sort().join("\u0001");
+    if (!rkCache || rkCache.key !== key || rkCache.sig !== sig) rkCache = { key, sig, R: Core.rank(G, key, filterSet()) };
+    return rkCache.R;
+  }
+  function renderRank() {
+    if (!G) return;
+    const R = rankData(), an = Core.analyze(G), N = G.nodes.length, key = $("rkSort").value;
+    const toks = $("rkFilter").value.toLowerCase().split(/\s+/).filter(Boolean);
+    const topV = $("rkTop").value, top = topV === "all" ? Infinity : +topV;
+    document.querySelectorAll("#rkTable th.s").forEach(th => th.classList.toggle("sorted", th.dataset.k === key));
+
+    const hits = [];
+    for (let i = 0; i < R.ids.length && hits.length < top; i++) {
+      const n = G.nodes[R.ids[i]];
+      if (!toks.length || toks.every(t => (n.lc + " " + n.table.toLowerCase()).includes(t))) hits.push(i);
+    }
+    let total = R.ids.length;
+    if (toks.length) { total = 0; for (const id of R.ids) { const n = G.nodes[id]; if (toks.every(t => (n.lc + " " + n.table.toLowerCase()).includes(t))) total++; } }
+
+    const rows = [], maxI = Math.max(1, an.maxImpact);
+    for (const i of hits) {
+      const id = R.ids[i], n = G.nodes[id], im = an.impact[id];
+      rows.push(`<tr data-id="${id}"${id === selected ? ' class="sel"' : ""} title="${esc(daxRef(n))}">`
+        + `<td class="l n">${fmt(i + 1)}</td>`
+        + `<td class="l"><div><span>${esc(n.label)}</span><small><i style="background:${colorOf(n.table)}"></i>${esc(n.table)}</small></div></td>`
+        + `<td><div class="bar"><span class="track"><i style="width:${(im / maxI * 100).toFixed(1)}%"></i></span><span class="v">${fmt(im)}</span><span class="p">${pct(im)}</span></div></td>`
+        + `<td>${fmt(n.usedBy.length)}</td><td>${fmt(an.finals[id])}</td><td>${fmt(an.deps[id])}</td><td>${pct(R.cum[i])}</td>`
+        + `<td><button class="go" title="${esc(t("goT"))}">↗</button></td></tr>`);
+    }
+    $("rkBody").innerHTML = rows.length ? rows.join("") : `<tr><td class="none" colspan="8">${t(R.ids.length ? "rNone" : "rEmpty")}</td></tr>`;
+
+    let sum;
+    if (!R.ids.length) sum = "";
+    else if (toks.length) sum = t("rResults", { total, n: R.ids.length });
+    else {
+      const k = hits.length, c = R.cum[k - 1];
+      sum = t("rSum", { k, n: R.ids.length, c, N });
+    }
+    $("rkSum").textContent = sum;
+  }
+  function rankCsv() {
+    const R = rankData(), an = Core.analyze(G), N = G.nodes.length;
+    // FR : séparateur « ; » et virgule décimale (Excel) ; EN : « , » et point décimal
+    const D = lang === "fr" ? ";" : ",";
+    const q = s => s.includes(D) || /["\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    const p = v => { const s = (N ? v / N * 100 : 0).toFixed(2); return lang === "fr" ? s.replace(".", ",") : s; };
+    const lines = [t("csvHead")];
+    R.ids.forEach((id, i) => {
+      const n = G.nodes[id];
+      lines.push([i + 1, q(n.table), q(n.label), an.impact[id], p(an.impact[id]), n.usedBy.length, an.finals[id], an.deps[id], R.cum[i], p(R.cum[i])].join(D));
+    });
+    return "\uFEFF" + lines.join("\r\n") + "\r\n";
+  }
+  function showView(v) {
+    const r = v === "rank";
+    document.body.classList.toggle("rank", r);
+    $("viewGraph").classList.toggle("act", !r); $("viewRank").classList.toggle("act", r);
+  }
+  function setView(v) {
+    if (!G) return;
+    showView(v);
+    if (v === "rank") {
+      renderRank();
+      const tr = $("rkBody").querySelector("tr.sel");
+      if (tr) tr.scrollIntoView({ block: "center" });
+    } else if (graphDirty) { graphDirty = false; render(true); }
+    else if (autoFit) fitView();
+    if (selected != null) renderDetails(selected);
+  }
+  // depuis le classement : le graphe des consommateurs de la mesure = tout ce qui bouge si on la modifie
+  function goToGraph(id) {
+    showView("graph"); graphDirty = false;
+    $("mode").value = "up"; $("depth").value = "99"; syncControls();
+    setMin(0);
+    refocus(id);
+  }
+  $("viewGraph").addEventListener("click", () => setView("graph"));
+  $("viewRank").addEventListener("click", () => setView("rank"));
+  for (const id of ["rkSort", "rkTop"]) $(id).addEventListener("change", renderRank);
+  $("rkFilter").addEventListener("input", renderRank);
+  document.querySelectorAll("#rkTable th.s").forEach(th => th.addEventListener("click", () => { $("rkSort").value = th.dataset.k; renderRank(); }));
+  const rowId = t => { const tr = t && t.closest && t.closest("#rkBody tr"); return tr && tr.dataset.id != null ? +tr.dataset.id : null; };
+  $("rkBody").addEventListener("click", e => {
+    const id = rowId(e.target);
+    if (id == null) return;
+    if (e.target.closest(".go")) { goToGraph(id); return; }
+    selected = id;
+    $("rkBody").querySelectorAll("tr.sel").forEach(r => r.classList.remove("sel"));
+    e.target.closest("tr").classList.add("sel");
+    renderDetails(id);
+  });
+  $("rkBody").addEventListener("dblclick", e => { const id = rowId(e.target); if (id != null) goToGraph(id); });
+  $("rkCsv").addEventListener("click", () => {
+    if (!G) return;
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([rankCsv()], { type: "text/csv;charset=utf-8" }));
+    a.download = t("csvFile");
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  });
+
+  /* ---------- zoom / déplacement ---------- */
+  const applyView = () => {
+    vp.setAttribute("transform", `translate(${view.x},${view.y}) scale(${view.k})`);
+    svg.classList.toggle("lod", view.k < 0.32); // trop petit pour lire : on masque les textes (plus fluide)
+  };
+  function zoomAt(mx, my, f) {
+    const nk = Math.min(4, Math.max(0.01, view.k * f));
+    view.x = mx - (mx - view.x) * (nk / view.k); view.y = my - (my - view.y) * (nk / view.k); view.k = nk; autoFit = false; applyView();
+  }
+  function fitView() {
+    if (!current || !current.nodes.length) return;
+    const r = svg.getBoundingClientRect(), b = current.bbox, m = 50;
+    if (r.width < 10 || r.height < 10) return; // graphe masqué
+    const k = Math.max(0.01, Math.min((r.width - 2 * m) / b.w, (r.height - 2 * m) / b.h, 1.3));
+    view.k = k; view.x = (r.width - b.w * k) / 2 - b.x * k; view.y = (r.height - b.h * k) / 2 - b.y * k; autoFit = true; applyView();
+  }
+  function centerOn(id) {
+    const n = posById.get(id);
+    if (!n) return;
+    const r = svg.getBoundingClientRect();
+    view.k = Math.max(view.k, 0.9);
+    view.x = r.width / 2 - (n.x + n.w / 2) * view.k; view.y = r.height / 2 - n.y * view.k; autoFit = false; applyView();
+  }
+  svg.addEventListener("wheel", e => { e.preventDefault(); const r = svg.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+  $("zin").addEventListener("click", () => { const r = svg.getBoundingClientRect(); zoomAt(r.width / 2, r.height / 2, 1.3); });
+  $("zout").addEventListener("click", () => { const r = svg.getBoundingClientRect(); zoomAt(r.width / 2, r.height / 2, 1 / 1.3); });
+  $("fit").addEventListener("click", fitView);
+  window.addEventListener("resize", () => { if (current && autoFit) fitView(); });
+
+  let down = null, lastClick = { id: null, t: 0 };
+  const nodeOf = t => { const g = t && t.closest && t.closest(".node"); return g ? +g.getAttribute("data-id") : null; };
+  svg.addEventListener("pointerdown", e => {
+    if (e.button !== 0) return;
+    down = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, id: nodeOf(e.target), moved: false };
+  });
+  window.addEventListener("pointermove", e => {
+    if (!down) return;
+    const dx = e.clientX - down.x, dy = e.clientY - down.y;
+    if (!down.moved && Math.hypot(dx, dy) > 4) { down.moved = true; svg.classList.add("panning"); }
+    if (down.moved) { view.x = down.vx + dx; view.y = down.vy + dy; autoFit = false; applyView(); }
+  });
+  window.addEventListener("pointerup", () => {
+    if (!down) return;
+    const d = down; down = null; svg.classList.remove("panning");
+    if (d.moved) return;
+    if (d.id == null) { // clic dans le vide : on retire la mise en évidence
+      if (!G || focus == null) return;
+      if (modeVal() === "all") { selected = null; highlight(null); } else select(focus);
+      return;
+    }
+    const now = Date.now();
+    if (lastClick.id === d.id && now - lastClick.t < 400) { lastClick = { id: null, t: 0 }; modeVal() === "all" ? isolate(d.id) : refocus(d.id); }
+    else { lastClick = { id: d.id, t: now }; select(d.id); }
+  });
+
+  function showTip(id, e) {
+    const n = G.nodes[id];
+    tip.textContent = `${daxRef(n)}\n${t("tip", { d: n.deps.length, u: n.usedBy.length })}`;
+    tip.style.display = "block"; moveTip(e);
+  }
+  function moveTip(e) {
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.max(4, Math.min(innerWidth - w - 4, e.clientX + 14)) + "px";
+    tip.style.top = Math.max(4, Math.min(innerHeight - h - 4, e.clientY + 16)) + "px";
+  }
+  svg.addEventListener("mouseover", e => { const id = nodeOf(e.target); if (id != null) { highlight(id, true); showTip(id, e); } });
+  svg.addEventListener("mousemove", e => { if (tip.style.display === "block") moveTip(e); });
+  svg.addEventListener("mouseout", e => {
+    const id = nodeOf(e.target);
+    if (id == null || nodeOf(e.relatedTarget) === id) return;
+    highlight(selected); tip.style.display = "none";
+  });
+
+  /* ---------- recherche ---------- */
+  const search = $("search"), sug = $("suggest");
+  let sugItems = [], sugIdx = -1;
+  const closeSug = () => { sug.style.display = "none"; sugIdx = -1; };
+  function paintSug() { [...sug.children].forEach((li, i) => li.classList.toggle("act", i === sugIdx)); }
+  search.addEventListener("input", () => {
+    if (!G) return;
+    sugItems = Core.search(G, search.value, filterSet());
+    sug.replaceChildren();
+    sugItems.forEach(n => {
+      const li = document.createElement("li"), s = document.createElement("span"), sm = document.createElement("small");
+      s.textContent = n.label; sm.textContent = n.table; li.title = daxRef(n);
+      li.append(s, sm);
+      li.addEventListener("mousedown", ev => { ev.preventDefault(); closeSug(); refocus(n.id); search.blur(); });
+      sug.appendChild(li);
+    });
+    sugIdx = sugItems.length ? 0 : -1;
+    sug.style.display = sugItems.length ? "block" : "none";
+    paintSug();
+  });
+  search.addEventListener("keydown", e => {
+    if (e.key === "ArrowDown" && sugItems.length) { sugIdx = Math.min(sugItems.length - 1, sugIdx + 1); paintSug(); e.preventDefault(); }
+    else if (e.key === "ArrowUp" && sugItems.length) { sugIdx = Math.max(0, sugIdx - 1); paintSug(); e.preventDefault(); }
+    else if (e.key === "Enter" && sugIdx >= 0 && sugItems[sugIdx]) { const id = sugItems[sugIdx].id; closeSug(); refocus(id); search.blur(); }
+    else if (e.key === "Escape") closeSug();
+  });
+  search.addEventListener("focus", () => search.select());
+  search.addEventListener("blur", () => closeSug());
+
+  /* ---------- export SVG ---------- */
+  $("exportSvg").addEventListener("click", () => {
+    if (!current || !current.nodes.length) return;
+    const b = current.bbox, m = 30, big = svg.classList.contains("big");
+    const c = svg.cloneNode(true);
+    c.removeAttribute("class"); if (big) c.setAttribute("class", "big");
+    c.setAttribute("viewBox", `${b.x - m} ${b.y - m} ${b.w + 2 * m} ${b.h + 2 * m}`);
+    c.setAttribute("width", Math.round(b.w + 2 * m)); c.setAttribute("height", Math.round(b.h + 2 * m));
+    c.removeAttribute("style");
+    c.querySelector("#viewport").removeAttribute("transform");
+    c.querySelectorAll(".dim, .on, .sel").forEach(x => x.classList.remove("dim", "on", "sel"));
+    const style = document.createElementNS(NS, "style");
+    style.textContent = [...document.styleSheets[0].cssRules].filter(r => /^(\.edge|svg\.dim|svg\.big|\.node)/.test(r.selectorText || "")).map(r => r.cssText).join("\n")
+      + "\n:root{--leaf:#16a34a}";
+    c.insertBefore(style, c.firstChild);
+    const bg = document.createElementNS(NS, "rect");
+    bg.setAttribute("x", b.x - m); bg.setAttribute("y", b.y - m); bg.setAttribute("width", b.w + 2 * m); bg.setAttribute("height", b.h + 2 * m); bg.setAttribute("fill", "#ffffff");
+    c.insertBefore(bg, style.nextSibling);
+    const blob = new Blob([new XMLSerializer().serializeToString(c)], { type: "image/svg+xml" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = (modeVal() === "all" ? t("svgFull") : (G.nodes[focus].label.replace(/[^\w\-]+/g, "_") || "graph")) + ".svg";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  });
+
+  /* ---------- changement de langue ---------- */
+  function applyLang() {
+    document.documentElement.lang = lang;
+    document.title = t("title");
+    stage.dataset.drop = t("drop");
+    applyStatic(document);
+    $("langFr").classList.toggle("act", lang === "fr");
+    $("langEn").classList.toggle("act", lang === "en");
+    paintStatus(); updateTblBtn(); updateDeg(); paintInfo();
+    if (G && selected != null) renderDetails(selected);
+    if (G && isRank()) renderRank();
+  }
+  function setLang(l) {
+    if (l !== "fr" && l !== "en") return;
+    lang = l;
+    try { localStorage.setItem("mg-lang", l); } catch (e) { /* stockage indisponible */ }
+    applyLang();
+  }
+  $("langFr").addEventListener("click", () => setLang("fr"));
+  $("langEn").addEventListener("click", () => setLang("en"));
+  applyLang();
+
+  /* point d'entrée pour les tests / scripts */
+  window.MeasureGraph = {
+    loadText, select, setTables, setView, rankCsv, setLang,
+    get lang() { return lang; },
+    // classement courant (critère choisi dans l'interface) ; key optionnel pour forcer un critère
+    rank(key) { if (key) $("rkSort").value = key; return rankData(); },
+    get view() { return isRank() ? "rank" : "graph"; },
+    get rankRows() { return [...$("rkBody").querySelectorAll("tr[data-id]")].map(r => +r.dataset.id); },
+    // simule le curseur : applique le palier le plus proche (≤ v) et renvoie la valeur réellement utilisée
+    setMinLinks(v, metric) {
+      if (metric) $("degMetric").value = metric;
+      buildSteps(); setMin(v); render(true); return minCount;
+    },
+    get minLinks() { return minCount; },
+    setMode(mode, depth) { $("mode").value = mode; if (depth) $("depth").value = String(depth); syncControls(); render(true); },
+    focusByLabel(label, mode, depth, table) {
+      if (mode) $("mode").value = mode;
+      if (depth) $("depth").value = String(depth);
+      syncControls();
+      const id = table ? G.nodes.find(n => n.label === label && n.table === table)?.id : G.byLabel.get(label);
+      if (id === undefined) throw new Error("Measure not found: " + label);
+      refocus(id);
+    },
+    get graph() { return G; },
+    get layout() { return current; },
+    get focusId() { return focus; }
+  };
+})();
+</script>
+</body>
+</html>

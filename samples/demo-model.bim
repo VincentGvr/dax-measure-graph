@@ -1,0 +1,57 @@
+{
+  "name": "Demo retail model",
+  "compatibilityLevel": 1500,
+  "model": {
+    "culture": "en-US",
+    "tables": [
+      {
+        "name": "Sales",
+        "measures": [
+          { "name": "Total Sales", "expression": "SUM ( Orders[Amount] )" },
+          { "name": "Total Quantity", "expression": "SUM ( Orders[Quantity] )" },
+          { "name": "Total Cost", "expression": "SUM ( Orders[Cost] )" },
+          { "name": "Order Count", "expression": "DISTINCTCOUNT ( Orders[OrderID] )" },
+          { "name": "Gross Margin", "expression": "[Total Sales] - [Total Cost]" },
+          { "name": "Gross Margin %", "expression": "DIVIDE ( [Gross Margin], [Total Sales] )" },
+          { "name": "Average Basket", "expression": "DIVIDE ( [Total Sales], [Order Count] )" },
+          { "name": "Average Price", "expression": "DIVIDE ( [Total Sales], [Total Quantity] )" }
+        ]
+      },
+      {
+        "name": "Customers",
+        "measures": [
+          { "name": "Customer Count", "expression": "DISTINCTCOUNT ( Orders[CustomerID] )" },
+          { "name": "Active Customers", "expression": [ "CALCULATE (", "    [Customer Count],", "    Customers[IsActive] = TRUE ()", ")" ] },
+          { "name": "Active Customer Share", "expression": "DIVIDE ( [Active Customers], [Customer Count] )" },
+          { "name": "Sales per Customer", "expression": "DIVIDE ( [Total Sales], [Customer Count] )" },
+          { "name": "Active Sales", "expression": "CALCULATE ( [Total Sales], Customers[IsActive] )" }
+        ]
+      },
+      {
+        "name": "Time Intelligence",
+        "measures": [
+          { "name": "Sales YTD", "expression": "CALCULATE ( [Total Sales], DATESYTD ( 'Calendar'[Date] ) )" },
+          { "name": "Sales LY", "expression": "CALCULATE ( [Total Sales], SAMEPERIODLASTYEAR ( 'Calendar'[Date] ) )" },
+          { "name": "Sales 12M", "expression": "CALCULATE ( [Total Sales], DATESINPERIOD ( 'Calendar'[Date], MAX ( 'Calendar'[Date] ), -12, MONTH ) )" },
+          { "name": "Sales YoY %", "expression": "DIVIDE ( [Total Sales] - [Sales LY], [Sales LY] )" },
+          { "name": "Margin YTD", "expression": "CALCULATE ( [Gross Margin], DATESYTD ( 'Calendar'[Date] ) )" },
+          { "name": "Margin LY", "expression": "CALCULATE ( [Gross Margin], SAMEPERIODLASTYEAR ( 'Calendar'[Date] ) )" },
+          { "name": "Margin 12M", "expression": "CALCULATE ( [Gross Margin], DATESINPERIOD ( 'Calendar'[Date], MAX ( 'Calendar'[Date] ), -12, MONTH ) )" },
+          { "name": "Selected Sales", "expression": "SWITCH (\n    SELECTEDVALUE ( 'Period'[Code] ),\n    \"YTD\", [Sales YTD],\n    \"LY\", [Sales LY],\n    \"12M\", [Sales 12M],\n    [Total Sales]\n)" },
+          { "name": "Selected Margin", "expression": "SWITCH (\n    SELECTEDVALUE ( 'Period'[Code] ),\n    \"YTD\", [Margin YTD],\n    \"LY\", [Margin LY],\n    \"12M\", [Margin 12M],\n    [Gross Margin]\n)" }
+        ]
+      },
+      {
+        "name": "KPI Tiles",
+        "measures": [
+          { "name": "Tile Sales", "expression": "FORMAT ( [Selected Sales], \"#,0\" )" },
+          { "name": "Tile Margin %", "expression": "DIVIDE ( [Selected Margin], [Selected Sales] )" },
+          { "name": "Tile Active Customers", "expression": "[Active Customers]" },
+          { "name": "Tile Basket", "expression": "[Average Basket]" },
+          { "name": "Tile Growth", "expression": "[Sales YoY %]" },
+          { "name": "Tile Active Share", "expression": "[Active Customer Share]" }
+        ]
+      }
+    ]
+  }
+}
