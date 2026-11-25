@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.svg" alt="DAX Measure Graph logo" width="140"></p>
+
 # DAX Measure Graph
 
 A single-file HTML tool to **explore the measure dependencies of a Power BI / Analysis Services tabular model** and find **which measures to touch first** to impact the largest part of the model.

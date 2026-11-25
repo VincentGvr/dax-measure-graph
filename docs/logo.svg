@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="DAX Measure Graph logo, light badge">
+<circle cx="256" cy="256" r="250" fill="#ffffff" stroke="#2563eb" stroke-width="12"/>
+<path d="M 188.22 133.5 A 140 140 0 0 0 140.79 335.54" fill="none" stroke="#60a5fa" stroke-width="26"/>
+<polygon points="110.38,356.53 188.22,378.5 171.2,314.54" fill="#60a5fa"/>
+<path d="M 323.78 378.5 A 140 140 0 0 0 371.21 176.46" fill="none" stroke="#60a5fa" stroke-width="26"/>
+<polygon points="401.62,155.47 323.78,133.5 340.8,197.46" fill="#60a5fa"/>
+<circle cx="256" cy="116" r="54" fill="#1d4ed8"/><circle cx="243.04" cy="103.04" r="28.08" fill="#93c5fd"/>
+<circle cx="256" cy="396" r="54" fill="#1d4ed8"/><circle cx="243.04" cy="383.04" r="28.08" fill="#93c5fd"/>
+</svg>
